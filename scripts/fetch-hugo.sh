@@ -61,7 +61,7 @@ build_one() {
       if [ -x "${cc}" ]; then
         echo ">> [${abi}] extended build (NDK cgo)"
         if env -u GOBIN CGO_ENABLED=1 GOOS=android GOARCH="${goarch}" CC="${cc}" CXX="${cxx}" \
-            go install -tags extended "${target}"; then
+            go install -trimpath -ldflags "-s -w" -tags extended "${target}"; then
           cp "$(hugo_out android "${goarch}")" "${dest}"
           chmod +x "${dest}"
           ls -lh "${dest}"
@@ -78,7 +78,7 @@ build_one() {
   # NOTE: must be GOOS=android (not linux): the Go stdlib avoids faccessat2
   # on android, which Android's seccomp blocks with SIGSYS on many devices.
   env -u GOBIN CGO_ENABLED=0 GOOS=android GOARCH="${goarch}" ${goarm:+GOARM=${goarm}} \
-    go install "${target}"
+    go install -trimpath -ldflags "-s -w" "${target}"
   cp "$(hugo_out android "${goarch}")" "${dest}"
   chmod +x "${dest}"
 }
