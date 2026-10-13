@@ -1,0 +1,78 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main, master ]
+    tags: [ 'v*' ]
+  workflow_dispatch:
+    inputs:
+      hugo_version:
+        description: 'Hugo version (Go module tag)'
+        required: false
+        default: 'v0.139.4'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      HUGO_VERSION: ${{ github.event.inputs.hugo_version || 'v0.139.4' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+
+      - name: Install npm dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Build web assets (esbuild)
+        run: npm run build
+
+      - name: Run unit tests (front matter / tags)
+        run: npm test
+
+      - name: Prepare Capacitor android project
+        run: bash scripts/prepare-android.sh
+
+      - name: Accept Android SDK licenses
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+
+      - name: Cross-compile Hugo for Android (arm64/armv7/x86_64)
+        run: bash scripts/fetch-hugo.sh
+
+      - name: Build debug APK
+        run: |
+          cd android
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Collect APK
+        run: |
+          cp android/app/build/outputs/apk/debug/app-debug.apk HugoPad-debug.apk
+          ls -lh HugoPad-debug.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: HugoPad-apk
+          path: HugoPad-debug.apk
+          if-no-files-found: error
+
+      - name: Create release with APK
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: HugoPad-debug.apk
+          generate_release_notes: true

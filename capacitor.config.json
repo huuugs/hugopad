@@ -1,0 +1,11 @@
+{
+  "appId": "com.hugopad.app",
+  "appName": "HugoPad",
+  "webDir": "www",
+  "android": {
+    "allowMixedContent": true
+  },
+  "server": {
+    "allowNavigation": ["127.0.0.1", "localhost"]
+  }
+}
